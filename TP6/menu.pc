@@ -1,0 +1,293 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define size_t long
+
+EXEC SQL INCLUDE SQLCA.H;
+EXEC SQL INCLUDE SQLDA.H;
+EXEC SQL INCLUDE ORACA.H;
+
+void connexion(){
+     VARCHAR uid[50];
+     char login[20];
+     char passwd[20];
+     // printf("Donner votre login : ");
+     // scanf("%s", login);
+     // printf("\nDonnez votre mot de passe Oracle : ");
+     // scanf("%s", passwd);
+     // printf("\n");
+     strcpy(login, "gedevries");
+     strcpy(passwd, "robertoramonet");
+
+     strcpy(uid.arr, login);
+     strcat(uid.arr, "/");
+     strcat(uid.arr, passwd);
+     strcat(uid.arr, "@kirov");
+     uid.len = strlen(uid.arr);
+
+     EXEC SQL CONNECT :uid;
+     if (sqlca.sqlcode == 0){
+          printf("Connexion réussie avec succès. \n\n");
+     }
+     else {
+          printf("Problème à la connexion. \n\n");
+          exit(1);
+     }
+}
+
+
+void deconnexion(int validation){
+
+     if (validation == 1){
+          EXEC SQL COMMIT WORK RELEASE;
+     } else {
+          EXEC SQL ROLLBACK WORK RELEASE;
+     }
+
+     printf("Déconnexion sans problème. \n");
+
+}
+
+
+void sql_error(char *msg){
+     char err_msg[128];
+     long buf_len, msg_len;
+
+     EXEC SQL WHENEVER SQLERROR CONTINUE;
+
+     printf("%s\n", msg);
+     buf_len = sizeof (err_msg);
+     sqlglm(err_msg, &buf_len, &msg_len);
+
+     if(msg_len > buf_len){
+          msg_len = buf_len;
+     }
+
+     printf(".*%s\n", msg_len, err_msg);
+
+     deconnexion(0);
+
+     exit(1);
+
+
+}
+
+void saisieClient(){
+     int cpt;
+     char vNoClient[6];
+     VARCHAR vNom[80];
+     VARCHAR vVille[80];
+     VARCHAR vPostal[5];
+
+     printf("Saisir le numéro du client: ");
+     scanf("%s%*c", vNoClient);
+
+
+     EXEC SQL SELECT count(*) INTO :cpt 
+     FROM tclient2017 WHERE noClient = :vNoClient;
+
+     if (cpt > 0){
+          sql_error("Ce client existe déjà dans la table tclient2017");
+     }
+
+     printf("Saisir le nom du client: ");
+     scanf("%s", vNom.arr);
+     vNom.len = strlen(vNom.arr);
+
+     printf("Saisir la ville du client: ");
+     scanf("%s", vVille.arr);
+     vVille.len = strlen(vVille.arr);
+
+     printf("Saisir le code postal du client: ");
+     scanf("%s", vPostal.arr);
+     vPostal.len = strlen(vPostal.arr);
+
+
+     EXEC SQL INSERT INTO tclient2017 values (:vNoClient, :vNom, :vVille, :vPostal);
+
+     EXEC SQL COMMIT WORK;
+}
+
+void modifClient(){
+
+     char vNoClient[6];
+     char vNoClientInut[6];
+     VARCHAR vNom[80];
+     VARCHAR vVille[80];
+     VARCHAR vPostal[5];
+
+     printf("Saisir le numéro du client que vous souhaitez modifier: ");
+     scanf("%s%*c", vNoClient);
+
+     EXEC SQL WHENEVER SQLERROR DO sql_error("Ce client n'existe pas ! \n"); 
+     EXEC SQL SELECT noClient INTO :vNoClientInut FROM tclient2017 WHERE noClient = :vNoClient;
+
+     printf("Saisir le nouveau nom du client: ");
+     scanf("%s", vNom.arr);
+     vNom.len = strlen(vNom.arr);
+
+     printf("Saisir la nouvelle ville du client: ");
+     scanf("%s", vVille.arr);
+     vVille.len = strlen(vVille.arr);
+
+     printf("Saisir le nouveau code postal du client: ");
+     scanf("%s", vPostal.arr);
+     vPostal.len = strlen(vPostal.arr);
+
+     EXEC SQL WHENEVER SQLERROR DO sql_error("Erreur au moment de la mise à jour! \n");
+     EXEC SQL UPDATE tclient2017 SET 
+          nom = :vNom, ville = :vVille, postal = :vPostal WHERE noClient = :vNoClient;
+     EXEC SQL COMMIT WORK;
+}
+
+void supprClient(){
+
+     int cpt;
+     char vNoClient[5];
+     char vNoClientInut[5];
+     VARCHAR vNom[80];
+     VARCHAR vVille[80];
+     VARCHAR vPostal[5];
+
+
+     printf("Saisir le numéro du client que vous souhaitez supprimer: ");
+     scanf("%s", vNoClient);
+
+     //EXEC SQL WHENEVER NOT FOUND DO sql_error("Ce client n'existe pas !\n");
+     EXEC SQL SELECT count(*) INTO :cpt FROM tclient2017 WHERE noClient = :vNoClient;
+     //EXEC SQL SELECT noClient INTO :vNoClientInut FROM tclient2017 WHERE noClient = :vNoClient;
+     printf("%d", cpt);
+     if(cpt == 0){
+        sql_error("Ce client n'existe pas. ");
+     }
+
+     EXEC SQL SELECT count(*) INTO :cpt 
+          FROM tlocation2017 WHERE noClient = :vNoClient;
+
+     if (cpt > 0){
+          printf("La suppression de ce client provoquera la suppression de %d locations en cours. \n", cpt);
+     }
+     EXEC SQL SELECT count(*) INTO :cpt 
+          FROM tlocatretour2017 WHERE noClient = :vNoClient; 
+
+     if (cpt > 0){     
+          printf("La suppression de ce client provoquera la suppression de %d locations retournées. \n", cpt);
+     }
+
+     EXEC SQL WHENEVER SQLERROR DO sql_error("Erreur de suppression! \n"); 
+     EXEC SQL DELETE FROM tlocatretour2017 WHERE noClient = :vNoClient;
+     EXEC SQL DELETE FROM tlocation2017 WHERE noClient = :vNoClient;
+     EXEC SQL DELETE FROM tclient2017 WHERE noClient = :vNoClient;
+
+     EXEC SQL COMMIT WORK;
+
+     printf("Client et locations associées supprimées avec succès! \n");
+
+}
+
+
+int SaisirEntier(void){
+    int x; char term;
+    int nb = scanf("%d%c", &x, &term);
+    while(nb != 2 || term != '\n'){
+        printf("\nSaisie incorrecte. Ressayez:\n");
+        getchar();
+        nb = scanf("%d%c", &x, &term);
+    }
+    return x;
+}
+
+
+void afficherClients(void) {
+
+    char vNoClient[5];
+    VARCHAR vNom[80];
+    VARCHAR vVille[80];
+    VARCHAR vPostal[5];
+
+
+    EXEC SQL DECLARE C CURSOR FOR SELECT noClient, nom, ville, postal FROM tclient2017;
+
+    EXEC SQL OPEN C;
+    EXEC SQL FETCH C INTO :vNoClient, :vNom, :vVille, :vPostal;
+
+    EXEC SQL WHENEVER SQLERROR DO sql_error("Probleme cursor");
+    EXEC SQL WHENEVER NOT FOUND DO CONTINUE;
+
+    do{
+        printf("%s ", vNoClient);
+        printf("%.*s ", vNom.len, vNom.arr);
+        printf("%.*s ", vVille.len, vVille.arr);
+        printf("%.*s  \n", vPostal.len, vPostal.arr);
+
+        EXEC SQL FETCH C INTO :vNoClient, :vNom, :vVille, :vPostal;
+    } while (sqlca.sqlcode != 1403);
+
+    EXEC SQL CLOSE C;
+}
+
+void afficherLocationsRetournees(void){
+    
+
+    char vNoClient[5];
+
+
+    printf("Saisir le numéro du client que vous souhaitez modifier: ");
+    scanf("%s%*c", vNoClient);
+
+
+}
+
+
+int main(int argc, char** argv){
+
+
+     VARCHAR msg_buf[51];
+
+     EXEC SQL WHENEVER SQLERROR DO sql_error("Oracle error\n");
+
+     connexion();
+     int choix = 0;
+     //Presenter le menu
+    do
+    {   
+        printf("\n\n| MENU PRINCIPAL |\n\n");
+        printf("1. Ajouter un client\n");
+        printf("2. Supprimer un client\n");
+        printf("3. Modifier un client\n");
+        printf("4. Afficher les clients\n");
+        printf("5. Quitter\n");
+        choix = SaisirEntier();
+        system("clear");
+        switch (choix) {
+          case 1:
+               saisieClient();      
+               break;
+          case 2:
+               supprClient();
+               break;
+          case 3:
+               modifClient();
+               break;
+          case 4:
+
+                afficherClients();
+               break;
+          case 5:
+               break;     
+          default:
+             printf("\nFaites une choix parmi les options presentees.\n\n\n");
+             break;
+        }
+    } while (choix != 5);
+
+     system("clear");
+     deconnexion(1);
+     
+
+     return 0;
+
+
+}
+

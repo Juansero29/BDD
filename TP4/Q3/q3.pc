@@ -1,0 +1,105 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define size_t long
+
+EXEC SQL INCLUDE SQLCA.H;
+EXEC SQL INCLUDE SQLDA.H;
+EXEC SQL INCLUDE ORACA.H;
+
+void connexion(){
+     VARCHAR uid[50];
+     char login[20];
+     char passwd[20];
+     // printf("Donner votre login : ");
+     // scanf("%s", login);
+     // printf("\nDonnez votre mot de passe Oracle : ");
+     // scanf("%s", passwd);
+     // printf("\n");
+     strcpy(login, "gedevries");
+     strcpy(passwd, "robertoramonet");
+
+     strcpy(uid.arr, login);
+     strcat(uid.arr, "/");
+     strcat(uid.arr, passwd);
+     strcat(uid.arr, "@kirov");
+     uid.len = strlen(uid.arr);
+
+     EXEC SQL CONNECT :uid;
+     if (sqlca.sqlcode == 0){
+          printf("Connexion réussie avec succès. \n\n");
+     }
+     else {
+          printf("Problème à la connexion. \n\n");
+          exit(1);
+     }
+}
+
+
+void deconnexion(int validation){
+
+     if (validation == 1){
+          EXEC SQL COMMIT WORK RELEASE;
+     } else {
+          EXEC SQL ROLLBACK WORK RELEASE;
+     }
+
+     printf("Déconnexion sans problème. \n");
+
+}
+
+
+void sql_error(char *msg){
+     char err_msg[128];
+     long buf_len, msg_len;
+
+     EXEC SQL WHENEVER SQLERROR CONTINUE;
+
+     printf("%s\n", msg);
+     buf_len = sizeof (err_msg);
+     sqlglm(err_msg, &buf_len, &msg_len);
+
+     if(msg_len > buf_len){
+          msg_len = buf_len;
+     }
+
+     printf(".*%s\n", msg_len, err_msg);
+
+     deconnexion(0);
+
+     exit(1);
+
+
+}
+
+int main(int argc, char** argv){
+     VARCHAR msg_buf[51];
+
+     EXEC SQL WHENEVER SQLERROR DO sql_error("Oracle error\n");
+
+     connexion();
+
+     // EXEC SQL CREATE TABLE hello_world(msg VARCHAR2(50));
+     // EXEC SQL INSERT INTO hello_world VALUES ('Hello world!');
+     // EXEC SQL COMMIT;
+     // EXEC SQL SELECT msg INTO :msg_buf FROM hello_world WHERE rownum <= 1;
+
+     // printf("%.*s\n", msg_buf.len, msg_buf.arr);
+
+     EXEC SQL DROP TABLE tEssai1 PURGE;
+
+     EXEC SQL CREATE TABLE tEssai1(
+          id char(4) primary key, 
+          num NUMBER CHECK (num between 100 and 199),
+          unCar char CHECK (unCar in ('A','B','C')),
+          chaine VARCHAR2(10) CHECK (chaine like 'E%'),
+          uneDate DATE CHECK (to_char(uneDate, 'yyyy') = '2017')
+          );
+
+     EXEC SQL INSERT INTO tEssai1 VALUES('T01', 100, 'C', 'Essai', to_date('01/03/2017', 'dd/MM/yyyy'));
+
+     deconnexion(1);
+
+     return 0;
+}
