@@ -1,0 +1,16 @@
+javac src/ProgPrincipal.java -d bin -sourcepath src 
+java -classpath bin ProgPrincipal
+
+// JAVADOC : 
+javadoc -d doc -sourcepath src -subpackages application -encoding utf8 -docencoding utf8 charset utf8
+
+Ctrl+K : Couper ce qui se trouve apres le curseur
+Ctrl+Y : Coller
+Ctrl+X+S : Sauvegarder
+
+
+
+//SQL PRO C:
+
+make -f /etc/oracle/proc.mk build EXE=nomFichier OBJS=nomFichier.o
+
