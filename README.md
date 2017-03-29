@@ -4,7 +4,7 @@ Some work in SQL and PRO*C done in Clermont's Institut Of Technology ;)
 
 ## Installation
 
-
+I haven't found a way yet to install it on Linux (ArchLinux). So you may have to work it on yourself at the IUT's computing rooms :(
 
 ## Contributors
 
